@@ -1,0 +1,14 @@
+ [
+     "part {h1.roman}   "
+    ,
+     "section {h2.en} "
+    ,
+     "{h3.num}"
+    ,
+     "{h3.num}.{h4.num}:"
+    ,
+     "{h3.num}.{h4.num}.{h5.num}"
+    ,
+    "{h6.roman}"
+    
+]
