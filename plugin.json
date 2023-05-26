@@ -2,7 +2,7 @@
   "name": "headingIndex",
   "author": "椽承设计",
   "url": "https://github.com/leolee9086/headingIndex",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "displayName": {
     "default": "headingIndex",
     "zh_CN": "headingIndex"
@@ -12,7 +12,7 @@
     "zh_CN": "这是一个用于设置思源标题序号格式的插件"
   },
   "readme": {
-    "default": "README_zh_CN.md",
+    "default": "README.md",
     "en_US": "README_en_US.md",
     "zh_CN": "README.md"
   },
