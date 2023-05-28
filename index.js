@@ -29,6 +29,8 @@ class headingIndex extends Plugin {
     this.eventBus.off("ws-main", this.ws监听器);
   }
   async 初始化() {
+    this.生成顶栏();
+
     path = (await import(this.selfURL + "/polyfills/path.js"))["default"];
     importDep = async (moduleName) => {
       return await import(path.join(this.selfURL, moduleName));
@@ -64,7 +66,6 @@ class headingIndex extends Plugin {
     console.log(this.设置字典);
     生成标题序号(this.设置字典);
     this.eventBus.on("ws-main", this.ws监听器);
-    this.生成顶栏();
   }
   生成顶栏() {
     this.顶栏按钮 = this.addTopBar({
