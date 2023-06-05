@@ -19,7 +19,89 @@ class headingIndex extends Plugin {
     that = this;
     this.设置字典 = {};
     this.当前默认设置 = [];
+    this.生成顶栏();
+    this.添加页面();
     this.初始化();
+  }
+  添加页面() {
+    let plugin = this;
+    this.customTab = this.addTab({
+      type: "editor",
+      init() {
+        this.data.content.forEach((标题样式, i) => {
+          console.log(i);
+          this.element.insertAdjacentHTML(
+            "beforeend",
+            `<label class="fn__flex b3-label">
+              <div class="fn__flex-1">
+                  h${i + 1}
+                  <div class="b3-label__text">${
+                    plugin.i18n[数字转中文(i + 1) + "级标题编号样式"]
+                  }</div>
+              </div>
+              <span class="fn__space"></span>
+              <input class="b3-text-field fn__flex-center" data-level="${i}" >
+              </label>`
+          );
+          this.element.querySelector(`[data-level="${i}"]`).value = 标题样式;
+          this.element
+            .querySelector(`[data-level="${i}"]`)
+            .addEventListener("change", async (e) => {
+              this.data.content[i] = e.target.value;
+            });
+        });
+    
+        this.element.insertAdjacentHTML(
+          "beforeend",
+          `
+          <label class="fn__flex b3-label config__item">
+    <div class="fn__flex-1">
+        保存配置文件
+        <div class="b3-label__text">${this.data.name}.json</div>
+    </div>
+    <div class="fn__space"></div>
+    <div class="fn__size200 config__item-line fn__flex-center">
+    <button  class="b3-button b3-button--outline fn__size200 fn__flex-center" >
+          确定
+    </button>
+
+    </div>
+</label>
+          `
+        );
+        this.element
+          .querySelectorAll(`button`).forEach(
+            button=>{
+              button.addEventListener("click", async (e) => {
+                if (e.target.dataSet && e.target.dataSet.enable) {
+                  await 思源工作空间.writeFile(
+                    JSON.stringify(
+                      { name: this.data.name, content: this.data.content },
+                      undefined,
+                      2
+                    ),
+                    path.join(plugin.dataPath, "lastValue.json")
+                  );
+                }
+                await 思源工作空间.writeFile(
+                  JSON.stringify(this.data.content, undefined, 2),
+                  path.join(plugin.dataPath, this.data.name + ".json")
+                );
+                await plugin.初始化();
+                e.stopPropagation()
+              });
+            }
+          )
+         
+      },
+      async destroy() {
+        await 思源工作空间.writeFile(
+          JSON.stringify(this.data.content, undefined, 2),
+          path.join(plugin.dataPath, this.data.name + ".json")
+        );
+        await plugin.初始化();
+      },
+    });
   }
   onunload() {
     this.停止监听编辑();
@@ -29,8 +111,6 @@ class headingIndex extends Plugin {
     this.eventBus.off("ws-main", this.ws监听器);
   }
   async 初始化() {
-    this.生成顶栏();
-
     path = (await import(this.selfURL + "/polyfills/path.js"))["default"];
     importDep = async (moduleName) => {
       return await import(path.join(this.selfURL, moduleName));
@@ -39,6 +119,9 @@ class headingIndex extends Plugin {
     思源工作空间 = (await importDep("./polyfills/fs.js"))["default"];
     await this.覆盖默认设置();
     await this.获取全部设置();
+    document.querySelectorAll('#headingIndexStyle').forEach(
+      el=>el.remove()
+    )
     this.样式元素 = document.createElement("style");
     this.样式元素.setAttribute("id", "headingIndexStyle");
     this.样式元素.textContent = `
@@ -107,31 +190,88 @@ class headingIndex extends Plugin {
   }
   创建菜单() {
     const menu = new clientApi.Menu("topBarSample", () => {});
-    console.log(this.设置字典);
-    Object.getOwnPropertyNames(this.设置字典).forEach((name) => {
-      if (name == "当前全局配置") {
-        return;
-      }
-      let content = this.设置字典[name];
-      let element = document.createElement("button");
-      if (this.设置字典.当前全局配置 == content) {
-        element.style.backgroundColor = "var(--b3-card-success-background)";
-        当前选项按钮 = element;
-      }
-      element.setAttribute("class", "b3-menu__item");
-      element.innerText = name.split("/").pop();
-      menu.menu.append(element);
-      element.addEventListener("click", () => {
-        this.设置字典.当前全局配置 = content;
-        生成标题序号(this.设置字典);
-        this.saveData(
-          "lastValues.json",
-          JSON.stringify({ name: name, content: content })
-        );
-        menu.close();
-      });
+    let 配置文件名数组 = Object.getOwnPropertyNames(this.设置字典);
+    for (let i = 0, len = 配置文件名数组.length; i < len; i++) {
+      let name = 配置文件名数组[i];
+      this.添加配置文件选择菜单项(menu, name);
+    }
+    menu.addSeparator();
+    menu.addItem({
+      icon: "iconAdd",
+      label: this.i18n.添加配置文件,
+      click: () => {
+        let Dialog;
+        Dialog = new clientApi.Dialog({
+          title: "输入文件名,留空取消",
+          content: `<div class="fn__flex"><input class="fn__flex-1 b3-text-field  b3-filter" placeholder="输文件名,留空取消"></div>`,
+          width: "400px",
+          height: "96px",
+          destroyCallback: async () => {
+            let name = Dialog.element.querySelector("input").value;
+            if (name) {
+              let reg = new RegExp('[\\\\/:*?"<>|]');
+              if (reg.test(name)) {
+                return;
+              }
+              let 新配置文件路径 = path.join(this.dataPath, name + ".json");
+              await 思源工作空间.writeFile(
+                '["","","","","",""]',
+                新配置文件路径
+              );
+            }
+            await this.初始化();
+          },
+        });
+      },
     });
     menu.open(this.顶栏按钮.getBoundingClientRect());
+  }
+  添加配置文件选择菜单项(menu, name) {
+    if (name == "当前全局配置") {
+      return;
+    }
+    let content = this.设置字典[name];
+    let element = document.createElement("button");
+    if (this.设置字典.当前全局配置.name == name) {
+      element.style.backgroundColor = "var(--b3-card-success-background)";
+      当前选项按钮 = element;
+    }
+    element.setAttribute("class", "b3-menu__item");
+    element.innerHTML += `<span class="b3-menu__label">${name
+      .split("/")
+      .pop()}</span>`;
+    element.innerHTML +=
+      '<svg class="b3-menu__icon"><use xlink:href="#iconEdit"></use></svg>';
+    menu.menu.append(element);
+    element.addEventListener("click", (e) => {
+      if (e.target.tagName == "svg" || e.target.tagName == "use") {
+        this.打开编辑页面(content, name);
+        return;
+      }
+      this.设置字典.当前全局配置.name = name;
+      this.设置字典.当前全局配置.content = content;
+      生成标题序号(this.设置字典);
+      this.saveData(
+        "lastValues.json",
+        JSON.stringify({ name: name, content: content })
+      );
+      menu.close();
+    });
+  }
+  async 打开编辑页面(content, name) {
+    const tab = clientApi.openTab({
+      app: this.app,
+      custom: {
+        icon: "iconHeading",
+        title: name,
+        data: {
+          content: content,
+          name: name,
+        },
+        fn: this.customTab,
+      },
+    });
+    console.log(tab);
   }
   async 覆盖默认设置() {
     let jsContent = await (await fetch(this.selfURL + "/实例设置1.js")).text();
@@ -158,7 +298,7 @@ class headingIndex extends Plugin {
           await 思源工作空间.readFile(
             path.join(this.dataPath, "lastValues.json")
           )
-        ).content;
+        );
       } catch (e) {
         console.error(e);
       }
@@ -178,6 +318,12 @@ class headingIndex extends Plugin {
           配置项.name + "没有配置全部标题序号";
         }
         this.设置字典[配置项.name.split(".")[0]] = 配置内容;
+        if (
+          this.设置字典.当前全局配置 &&
+          this.设置字典.当前全局配置.name == 配置项.name.split(".")[0]
+        ) {
+          this.设置字典.当前全局配置.content = 配置内容;
+        }
       }
     }
   }
@@ -209,6 +355,7 @@ async function 生成标题序号(序号设置字典) {
     try {
       await 生成文档内标题序号(文档id, 序号设置字典);
     } catch (e) {
+      console.warn(e)
       if (当前选项按钮 && 当前选项按钮.parentElement) {
         当前选项按钮.style.backgroundColor = "var(--b3-card-error-background)";
         当前选项按钮.parentElement.insertAdjacentHTML(
@@ -226,13 +373,13 @@ async function 生成文档内标题序号(文档id, 序号设置字典) {
   /*if(文档内容.content.lenth>100000){
     return
   }*/
-  let 当前序号设置 = 序号设置字典.当前全局配置;
+  let 当前序号设置 = 序号设置字典.当前全局配置.content;
   if (文档信息.ial && 文档信息.ial["custom-index-scheme"]) {
     当前序号设置 =
       序号设置字典[文档信息.ial["custom-index-scheme"]] || 当前序号设置;
-    
   }
   if (!当前序号设置) {
+    
     return;
   }
   let 临时元素 = document.createElement("div");
@@ -248,7 +395,6 @@ async function 生成文档内标题序号(文档id, 序号设置字典) {
     }
     if (!标题元素数组[i].querySelector("[contenteditable]").innerText) {
       let 标题id = 标题元素数组[i].getAttribute("data-node-id");
-
       document
         .querySelectorAll(`.protyle-wysiwyg div[data-node-id='${标题id}']`)
         .forEach((一级标题元素) => {
@@ -270,34 +416,48 @@ async function 生成文档内标题序号(文档id, 序号设置字典) {
     }
     计数器[当前标题级别 - 1] += 1;
     let 标题id = 标题元素数组[i].getAttribute("data-node-id");
+    if(!当前序号设置[当前标题级别 - 1]){
+      document
+      .querySelectorAll(`.protyle-wysiwyg div[data-node-id='${标题id}']`)
+      .forEach(async (标题元素) => {
+        let 内容元素 = 标题元素.querySelector("[contenteditable]");
+        内容元素.setAttribute("style", `--custom-index:""`);
+      });
+    document
+      .querySelectorAll(`.sy__outline [data-node-id=""]`)
+      .forEach(async (大纲项目) => {
+        大纲项目.setAttribute("style", `--custom-index:""`);
+      });
+    }
     if (当前序号设置[当前标题级别 - 1]) {
       let 当前序号;
       if (当前序号设置[当前标题级别 - 1] instanceof Function) {
         当前序号 = 当前序号设置[当前标题级别 - 1](计数器[当前标题级别 - 1]);
       } else {
         function h(级别) {
-          let num = 计数器[级别 - 1]
-          let obj =()=>{return num}
-           
-            obj.num= num,
-            obj.ch=数字转中文(num),
-            obj.roman=numToRoman(num),
-            obj.en=numToEnglish(num),
-            obj.CH=数字转中文(num,true)
-            obj.abc=数字转字母(num,false)
-            obj.ABC=数字转字母(num,true)
-            obj.enth=numToEnglish(num,false)
+          let num = 计数器[级别 - 1];
+          let obj = () => {
+            return num;
+          };
 
-          
-          obj.toString=()=>{return Obj.num}
+          (obj.num = num),
+            (obj.ch = 数字转中文(num)),
+            (obj.roman = numToRoman(num)),
+            (obj.en = numToEnglish(num)),
+            (obj.CH = 数字转中文(num, true));
+          obj.abc = 数字转字母(num, false);
+          obj.ABC = 数字转字母(num, true);
+          obj.enth = numToEnglish(num, false);
+
+          obj.toString = () => {
+            return Obj.num;
+          };
 
           return obj;
-
         }
-        
-        
 
-        template.defaults.rules[1].test=/{([@#]?)[ \t]*(\/?)([\w\W]*?)[ \t]*}/       
+        template.defaults.rules[1].test =
+          /{([@#]?)[ \t]*(\/?)([\w\W]*?)[ \t]*}/;
         let string = 当前序号设置[当前标题级别 - 1];
         let render = template.compile(string);
         当前序号 = render({
@@ -311,13 +471,13 @@ async function 生成文档内标题序号(文档id, 序号设置字典) {
       }
       document
         .querySelectorAll(`.protyle-wysiwyg div[data-node-id='${标题id}']`)
-        .forEach(async(标题元素) => {
+        .forEach(async (标题元素) => {
           let 内容元素 = 标题元素.querySelector("[contenteditable]");
           内容元素.setAttribute("style", `--custom-index:"${当前序号}"`);
         });
       document
         .querySelectorAll(`.sy__outline [data-node-id="${标题id}"]`)
-        .forEach(async(大纲项目) => {
+        .forEach(async (大纲项目) => {
           大纲项目.setAttribute("style", `--custom-index:"${当前序号}"`);
         });
       上一个标题级别 = 当前标题级别 + 0;
@@ -329,12 +489,12 @@ async function 生成文档内标题序号(文档id, 序号设置字典) {
 //链接：https://juejin.cn/post/6844903473255809038
 //来源：稀土掘金
 //著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
-function 数字转中文(digit,大写) {
+function 数字转中文(digit, 大写) {
   digit = typeof digit === "number" ? String(digit) : digit;
   let zh = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
   let unit = ["千", "百", "十", ""];
-  if(大写){
-    zh= ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖'];
+  if (大写) {
+    zh = ["零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"];
     unit = ["仟", "佰", "拾", ""];
   }
   const quot = [
@@ -558,12 +718,12 @@ function numToEnglish(num) {
 
   return englishNum.trim();
 }
-function 数字转字母(num,upper){
-  if(num<=26){
-    
-  return upper?String.fromCharCode(64 + num):String.fromCharCode(64 + num).toLowerCase();
-  }
-  else{
-    return num
+function 数字转字母(num, upper) {
+  if (num <= 26) {
+    return upper
+      ? String.fromCharCode(64 + num)
+      : String.fromCharCode(64 + num).toLowerCase();
+  } else {
+    return num;
   }
 }
