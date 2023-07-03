@@ -61,3 +61,14 @@ So on and so forth.
 The numbering only considers the title.
 
 The plugin folder comes with four setting examples. You can try to refer to them and modify your own preferred styles.
+
+### write index
+
+use 'write index' in edtiortitleicon menu you can write index to those heading blocks in document
+### 忽略文档
+
+document with attribute custom-index-scheme:null  will be ignored
+
+## long blocks
+
+Long document blocks (over 1024 documents) will not generate numbering automatically and need to be manually generated in the editor menu.

@@ -19,9 +19,63 @@ class headingIndex extends Plugin {
     that = this;
     this.设置字典 = {};
     this.当前默认设置 = [];
+    this.已提示块 = [];
     this.生成顶栏();
+    this.增加编辑器生成菜单();
     this.添加页面();
     this.初始化();
+  }
+  增加编辑器生成菜单() {
+    this.eventBus.on("click-editortitleicon", (e) => {
+      let { menu, data } = e.detail;
+      menu.addItem({
+        icon: "iconOrderedList",
+        label: this.i18n.设置序号生成方式,
+        submenu: [
+          {
+            icon: "iconOrderedList",
+            label: this.i18n.刷新序号,
+            click: () => {
+              生成标题序号(that.设置字典, data.id);
+            },
+          },
+          {
+            icon: "iconEdit",
+            label: this.i18n.写入序号,
+            click: async () => {
+              clientApi.confirm(
+                "⚠️",
+                this.i18n["生成可能需要很长时间,是否确认继续?"],
+                async () => {
+                  await 生成文档内标题序号(data.id, that.设置字典, true);
+                }
+              );
+            },
+          },
+        ],
+      });
+
+      let _submenu = [];
+      Object.getOwnPropertyNames(this.设置字典).forEach((item) => {
+        if (item == "当前全局配置") {
+          return;
+        }
+        _submenu.push({
+          label: this.i18n.使用序号类型 + item,
+          click: async () => {
+            await 核心api.setBlockAttrs({
+              id: data.id,
+              attrs: { "custom-index-scheme": item },
+            });
+          },
+        });
+      });
+      menu.addItem({
+        icon: "iconOrderedList",
+        label: this.i18n.选择序号类型,
+        submenu: _submenu,
+      });
+    });
   }
   添加页面() {
     let plugin = this;
@@ -50,7 +104,7 @@ class headingIndex extends Plugin {
               this.data.content[i] = e.target.value;
             });
         });
-    
+
         this.element.insertAdjacentHTML(
           "beforeend",
           `
@@ -69,30 +123,26 @@ class headingIndex extends Plugin {
 </label>
           `
         );
-        this.element
-          .querySelectorAll(`button`).forEach(
-            button=>{
-              button.addEventListener("click", async (e) => {
-                if (e.target.dataSet && e.target.dataSet.enable) {
-                  await 思源工作空间.writeFile(
-                    JSON.stringify(
-                      { name: this.data.name, content: this.data.content },
-                      undefined,
-                      2
-                    ),
-                    path.join(plugin.dataPath, "lastValue.json")
-                  );
-                }
-                await 思源工作空间.writeFile(
-                  JSON.stringify(this.data.content, undefined, 2),
-                  path.join(plugin.dataPath, this.data.name + ".json")
-                );
-                await plugin.初始化();
-                e.stopPropagation()
-              });
+        this.element.querySelectorAll(`button`).forEach((button) => {
+          button.addEventListener("click", async (e) => {
+            if (e.target.dataSet && e.target.dataSet.enable) {
+              await 思源工作空间.writeFile(
+                JSON.stringify(
+                  { name: this.data.name, content: this.data.content },
+                  undefined,
+                  2
+                ),
+                path.join(plugin.dataPath, "lastValue.json")
+              );
             }
-          )
-         
+            await 思源工作空间.writeFile(
+              JSON.stringify(this.data.content, undefined, 2),
+              path.join(plugin.dataPath, this.data.name + ".json")
+            );
+            await plugin.初始化();
+            e.stopPropagation();
+          });
+        });
       },
       async destroy() {
         await 思源工作空间.writeFile(
@@ -119,9 +169,9 @@ class headingIndex extends Plugin {
     思源工作空间 = (await importDep("./polyfills/fs.js"))["default"];
     await this.覆盖默认设置();
     await this.获取全部设置();
-    document.querySelectorAll('#headingIndexStyle').forEach(
-      el=>el.remove()
-    )
+    document
+      .querySelectorAll("#headingIndexStyle")
+      .forEach((el) => el.remove());
     this.样式元素 = document.createElement("style");
     this.样式元素.setAttribute("id", "headingIndexStyle");
     this.样式元素.textContent = `
@@ -346,16 +396,33 @@ async function 读取json配置(配置路径) {
   let jsonContent = await 思源工作空间.readFile(配置路径);
   return JSON.parse(jsonContent);
 }
-async function 生成标题序号(序号设置字典) {
+let 已提示块 = {};
+async function 生成标题序号(序号设置字典, 文档id) {
+  if (文档id) {
+    await 生成文档内标题序号(文档id, 序号设置字典);
+  }
   let 文档面包屑数组 = document.querySelectorAll(
     ".protyle-breadcrumb__bar span:first-child[data-node-id]"
   );
   文档面包屑数组.forEach(async (文档面包屑元素) => {
     let 文档id = 文档面包屑元素.getAttribute("data-node-id");
     try {
+      let 预取内容 = await 核心api.getDoc({ id: 文档id, size: 1 });
+      if (已提示块[文档id]) {
+        return;
+      }
+      if (预取内容.blockCount > 1024) {
+        let 文档信息 = await 核心api.getDocInfo({ id: 文档id });
+        核心api.pushMsg({
+          msg: `${文档信息.name}内块数量为${预取内容.blockCount},超过阈值,请手动生成`,
+        });
+        已提示块[文档id] = true;
+        return;
+      }
+
       await 生成文档内标题序号(文档id, 序号设置字典);
     } catch (e) {
-      console.warn(e)
+      console.warn(e);
       if (当前选项按钮 && 当前选项按钮.parentElement) {
         当前选项按钮.style.backgroundColor = "var(--b3-card-error-background)";
         当前选项按钮.parentElement.insertAdjacentHTML(
@@ -367,29 +434,35 @@ async function 生成标题序号(序号设置字典) {
   });
 }
 
-async function 生成文档内标题序号(文档id, 序号设置字典) {
+async function 生成文档内标题序号(文档id, 序号设置字典, 写入序号) {
   let 文档内容 = await 核心api.getDoc({ id: 文档id, size: 102400 });
   let 文档信息 = await 核心api.getDocInfo({ id: 文档id });
   /*if(文档内容.content.lenth>100000){
     return
   }*/
   let 当前序号设置 = 序号设置字典.当前全局配置.content;
+  if (文档信息.ial && 文档信息.ial["custom-index-scheme"] === "null") {
+    return;
+  }
   if (文档信息.ial && 文档信息.ial["custom-index-scheme"]) {
     当前序号设置 =
       序号设置字典[文档信息.ial["custom-index-scheme"]] || 当前序号设置;
   }
   if (!当前序号设置) {
-    
     return;
   }
-  let 临时元素 = document.createElement("div");
-  临时元素.innerHTML = 文档内容.content;
+  let parser = new DOMParser();
+  let 临时元素 = parser.parseFromString(文档内容.content, "text/html").body;
+  //console.log(临时元素)
+  // 临时元素.innerHTML = 文档内容.content;
   let 标题元素数组 = 临时元素.querySelectorAll(
     '[data-type="NodeHeading"]:not( [data-type="NodeBlockQueryEmbed"] div)'
   );
   let 计数器 = [0, 0, 0, 0, 0, 0];
   let 上一个标题级别 = 1;
   for (let i = 0; i < 标题元素数组.length; ++i) {
+    let 标题元素 = 标题元素数组[i];
+
     if (!标题元素数组[i].querySelector("[contenteditable]")) {
       return;
     }
@@ -416,18 +489,18 @@ async function 生成文档内标题序号(文档id, 序号设置字典) {
     }
     计数器[当前标题级别 - 1] += 1;
     let 标题id = 标题元素数组[i].getAttribute("data-node-id");
-    if(!当前序号设置[当前标题级别 - 1]){
+    if (!当前序号设置[当前标题级别 - 1]) {
       document
-      .querySelectorAll(`.protyle-wysiwyg div[data-node-id='${标题id}']`)
-      .forEach(async (标题元素) => {
-        let 内容元素 = 标题元素.querySelector("[contenteditable]");
-        内容元素.setAttribute("style", `--custom-index:""`);
-      });
-    document
-      .querySelectorAll(`.sy__outline [data-node-id=""]`)
-      .forEach(async (大纲项目) => {
-        大纲项目.setAttribute("style", `--custom-index:""`);
-      });
+        .querySelectorAll(`.protyle-wysiwyg div[data-node-id='${标题id}']`)
+        .forEach(async (标题元素) => {
+          let 内容元素 = 标题元素.querySelector("[contenteditable]");
+          内容元素.setAttribute("style", `--custom-index:""`);
+        });
+      document
+        .querySelectorAll(`.sy__outline [data-node-id=""]`)
+        .forEach(async (大纲项目) => {
+          大纲项目.setAttribute("style", `--custom-index:""`);
+        });
     }
     if (当前序号设置[当前标题级别 - 1]) {
       let 当前序号;
@@ -469,17 +542,48 @@ async function 生成文档内标题序号(文档id, 序号设置字典) {
           h6: h(6),
         });
       }
-      document
-        .querySelectorAll(`.protyle-wysiwyg div[data-node-id='${标题id}']`)
-        .forEach(async (标题元素) => {
-          let 内容元素 = 标题元素.querySelector("[contenteditable]");
-          内容元素.setAttribute("style", `--custom-index:"${当前序号}"`);
+      if (写入序号) {
+        let 旧标题序号元素 = 标题元素.querySelector(
+          'span [style="--custom-index:true;"]'
+        );
+        if (旧标题序号元素) {
+          旧标题序号元素.remove();
+        }
+        标题元素
+          .querySelector('[contenteditable="true"]')
+          .insertAdjacentHTML(
+            "afterBegin",
+            `<span style="--custom-index:true">${当前序号}</span>`
+          );
+        await 核心api.updateBlock({
+          dataType: "dom",
+          data: 标题元素.outerHTML,
+          id: 标题id,
         });
-      document
-        .querySelectorAll(`.sy__outline [data-node-id="${标题id}"]`)
-        .forEach(async (大纲项目) => {
-          大纲项目.setAttribute("style", `--custom-index:"${当前序号}"`);
-        });
+        document
+          .querySelectorAll(`.protyle-wysiwyg div[data-node-id='${标题id}']`)
+          .forEach(async (标题元素) => {
+            let 内容元素 = 标题元素.querySelector("[contenteditable]");
+            内容元素.setAttribute("style", ``);
+          });
+        document
+          .querySelectorAll(`.sy__outline [data-node-id="${标题id}"]`)
+          .forEach(async (大纲项目) => {
+            大纲项目.setAttribute("style", ``);
+          });
+      } else {
+        document
+          .querySelectorAll(`.protyle-wysiwyg div[data-node-id='${标题id}']`)
+          .forEach(async (标题元素) => {
+            let 内容元素 = 标题元素.querySelector("[contenteditable]");
+            内容元素.setAttribute("style", `--custom-index:"${当前序号}"`);
+          });
+        document
+          .querySelectorAll(`.sy__outline [data-node-id="${标题id}"]`)
+          .forEach(async (大纲项目) => {
+            大纲项目.setAttribute("style", `--custom-index:"${当前序号}"`);
+          });
+      }
       上一个标题级别 = 当前标题级别 + 0;
     }
   }
