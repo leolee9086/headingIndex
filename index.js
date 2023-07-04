@@ -193,7 +193,11 @@ class headingIndex extends Plugin {
     let 配置文件名数组 = Object.getOwnPropertyNames(this.设置字典);
     for (let i = 0, len = 配置文件名数组.length; i < len; i++) {
       let name = 配置文件名数组[i];
+      try{
       this.添加配置文件选择菜单项(menu, name);
+      }catch(e){
+        console.error(e)
+      }
     }
     menu.addSeparator();
     menu.addItem({
