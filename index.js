@@ -26,8 +26,11 @@ class headingIndex extends Plugin {
     this.初始化();
   }
   增加编辑器生成菜单() {
+   
+
     this.eventBus.on("click-editortitleicon", (e) => {
       let { menu, data } = e.detail;
+
       menu.addItem({
         icon: "iconOrderedList",
         label: this.i18n.设置序号生成方式,
@@ -544,7 +547,7 @@ async function 生成文档内标题序号(文档id, 序号设置字典, 写入�
       }
       if (写入序号) {
         let 旧标题序号元素 = 标题元素.querySelector(
-          'span [style="--custom-index:true;"]'
+          'span[style~="--custom-index:true"]'
         );
         if (旧标题序号元素) {
           旧标题序号元素.remove();

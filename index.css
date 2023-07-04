@@ -1,0 +1,19 @@
+.protyle-wysiwyg [data-node-id].li[data-subtype="t"] .protyle-action.protyle-action--task:before {
+    content:var(--custom-index) ;        
+}
+.protyle-wysiwyg [data-type="NodeHeading"] [contenteditable]:before{
+    content:var(--custom-index);
+}
+.sy__outline [data-node-id] .b3-list-item__text:before{
+    content:var(--custom-index);
+}
+div[contenteditable="true"]:has(span[style="--custom-index:true"])::before{
+    content:''!important;
+}
+div[contenteditable="true"]:has(span[style="--custom-index:true"])::before{
+    content:''!important;
+}
+span.b3-list-item__text:has(span[style="--custom-index:true"])::before{
+    content:''!important;
+
+}
