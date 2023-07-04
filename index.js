@@ -26,8 +26,6 @@ class headingIndex extends Plugin {
     this.初始化();
   }
   增加编辑器生成菜单() {
-   
-
     this.eventBus.on("click-editortitleicon", (e) => {
       let { menu, data } = e.detail;
 
@@ -246,10 +244,10 @@ class headingIndex extends Plugin {
     let 配置文件名数组 = Object.getOwnPropertyNames(this.设置字典);
     for (let i = 0, len = 配置文件名数组.length; i < len; i++) {
       let name = 配置文件名数组[i];
-      try{
-      this.添加配置文件选择菜单项(menu, name);
-      }catch(e){
-        console.error(e)
+      try {
+        this.添加配置文件选择菜单项(menu, name);
+      } catch (e) {
+        console.error(e);
       }
     }
     menu.addSeparator();
@@ -359,11 +357,14 @@ class headingIndex extends Plugin {
       } catch (e) {
         console.error(e);
       }
+    }else{
+      this.设置字典.当前全局配置={}
     }
   }
   async 获取全部设置() {
     let 全部配置 = await 思源工作空间.readDir(this.dataPath);
     for await (let 配置项 of 全部配置) {
+      try{
       if (!(配置项.isDir || 配置项.name == "lastValues.json")) {
         let 配置路径 = path.join(this.dataPath, 配置项.name);
         let 配置内容 = 配置项.name.endsWith(".js")
@@ -382,6 +383,9 @@ class headingIndex extends Plugin {
           this.设置字典.当前全局配置.content = 配置内容;
         }
       }
+    }catch(e){
+      console.error(`配置文件${配置项.name}加载错误`,e)
+    }
     }
   }
   async ws监听器(detail) {
@@ -520,15 +524,15 @@ async function 生成文档内标题序号(文档id, 序号设置字典, 写入�
             return num;
           };
 
-          (obj.num = num),
-            (obj.ch = 数字转中文(num)),
-            (obj.roman = numToRoman(num)),
-            (obj.en = numToEnglish(num)),
-            (obj.CH = 数字转中文(num, true));
+          obj.num = num
+            obj.ch = 数字转中文(num);
+          obj.roman = numToRoman(num);
+          obj.en = numToEnglish(num);
+            obj.CH = 数字转中文(num, true);
           obj.abc = 数字转字母(num, false);
           obj.ABC = 数字转字母(num, true);
           obj.enth = numToEnglish(num, false);
-
+          obj.ru = toRussian(num);
           obj.toString = () => {
             return Obj.num;
           };
@@ -837,4 +841,59 @@ function 数字转字母(num, upper) {
   } else {
     return num;
   }
+}
+let russianNames = [
+  "нуль",
+  "один",
+  "два",
+  "три",
+  "четыре",
+  "пять",
+  "шесть",
+  "семь",
+  "восемь",
+  "девять",
+  "десять",
+  "одиннадцать",
+  "двенадцать",
+  "тринадцать",
+  "четырнадцать",
+  "пятнадцать",
+  "шестнадцать",
+  "семнадцать",
+  "восемнадцать",
+  "девятнадцать",
+  "двадцать",
+  "двадцать один",
+  "двадцать два",
+  "двадцать три",
+  "двадцать четыре",
+  "двадцать пять",
+  "двадцать шесть",
+  "двадцать семь",
+  "двадцать восемь",
+  "двадцать девять",
+  "тридцать",
+  "сорок",
+  "пятьдесят",
+  "шестьдесят",
+  "семьдесят",
+  "восемьдесят",
+  "девяносто",
+];
+function toRussian(n) {
+  if (n < 0) return "минус " + toRussian(-n);
+  if (n < 20) return russianNames[n];
+
+  let hundreds = Math.floor(n / 100);
+  let tens = Math.floor((n % 100) / 10);
+  let ones = n % 10;
+
+  let result = "";
+  if (hundreds) result += russianNames[hundreds] + " сто ";
+  if (tens || ones) {
+    result += russianNames[tens * 10];
+    if (ones) result += " " + russianNames[ones];
+  }
+  return result;
 }
