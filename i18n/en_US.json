@@ -1,4 +1,18 @@
 {
   "addTopBarIcon": "open headingIndex menu，right click upload configFile",
-  "添加配置文件":"add index scheme"
+  "添加配置文件":"add index scheme",
+  "一级标题编号样式":"heading level 1",
+  "二级标题编号样式":"heading level 2",
+  "三级标题编号样式":"heading level 3",
+  "四级标题编号样式":"heading level 4",
+  "五级标题编号样式":"heading level 5",
+  "六级标题编号样式":"heading level 6",
+  "插件名":"headingIndex",
+  "刷新序号":"refresh index",
+  "写入序号":"write index",
+  "使用序号类型":"use   ",
+  "选择序号类型":"select index scheme",
+  "设置序号生成方式":"index generation",
+
+  "生成可能需要很长时间,是否确认继续?":"Generating may take a long time. Are you sure you want to proceed?"
 }
