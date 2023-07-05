@@ -65,9 +65,41 @@ The plugin folder comes with four setting examples. You can try to refer to them
 ### write index
 
 use 'write index' in edtiortitleicon menu you can write index to those heading blocks in document
-### 忽略文档
+### ignor documents
 
 document with attribute custom-index-scheme:null  will be ignored
+
+### pro：formatters
+
+in snippet you can use something like this to define your own formatters
+
+```javascript
+document.currentScript.indexFormatters=[
+{
+name:'latin',
+formatter:(num,indexObj,blockId)=>{
+let list={
+10:"十",
+11:"十一",
+12:"十二",
+13:"十三",
+14:"十四",
+15:"十五",
+16:"十六",
+17:"十七",
+18:"十八",
+19:"十九",
+}
+console.log(list[num],indexObj.ch
+)
+return list[num]||indexObj.ch
+}
+}
+]
+```
+
+
+
 
 ## long blocks
 
