@@ -76,6 +76,38 @@ h2 渲染为二级标题编号，依此类推
 
 custom-index-scheme设置为null的文档将会被忽略
 
+### 高级使用：格式化器
+
+支持在代码片段中定义格式化器，例如实例：
+
+```javascript
+document.currentScript.indexFormatters=[
+{
+name:'chs',
+formatter:(num,indexObj,blockId)=>{
+let list={
+10:"十",
+11:"十一",
+12:"十二",
+13:"十三",
+14:"十四",
+15:"十五",
+16:"十六",
+17:"十七",
+18:"十八",
+19:"十九",
+}
+console.log(list[num],indexObj.ch
+)
+return list[num]||indexObj.ch
+}
+}
+]
+```
+可以修改十一到十九的中文序号。
+
+在代码片段中添加上面的内容之后就可以通过`h1.chs`这样的形式来引用它
+
 ## 超长文档
 
 超长文档块（超过1024个文档的）不会自动生成序号，需要在编辑器菜单中手动生成

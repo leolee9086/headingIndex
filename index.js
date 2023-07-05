@@ -1,8 +1,3 @@
-//思源笔记折腾记录-快速开关代码片段
-//http://127.0.0.1:55484/stage/build/desktop/?r=r4eq8ar&&blockID=20230426000214-g9ic2p1
-//siyuan://blocks/20230426000214-g9ic2p1
-//之前我们已经弄了在笔记内以文档的形式写代码片段的活儿了，但是这些代码片段还是要去设置界面才能开关，有点不大方便，所以这回来整个新的活，让它们更方便开关一点点。
-//首先还是要引入依赖，这回因为需要工具栏和保存代码片段，所以我们需要这两个东西
 const { Plugin } = require("siyuan");
 const clientApi = require("siyuan");
 let 核心api;
@@ -12,6 +7,7 @@ let importDep;
 let 当前选项按钮;
 let that;
 let template;
+
 class headingIndex extends Plugin {
   onload() {
     this.selfURL = `/plugins/${this.constructor.name}`;
@@ -357,35 +353,35 @@ class headingIndex extends Plugin {
       } catch (e) {
         console.error(e);
       }
-    }else{
-      this.设置字典.当前全局配置={}
+    } else {
+      this.设置字典.当前全局配置 = {};
     }
   }
   async 获取全部设置() {
     let 全部配置 = await 思源工作空间.readDir(this.dataPath);
     for await (let 配置项 of 全部配置) {
-      try{
-      if (!(配置项.isDir || 配置项.name == "lastValues.json")) {
-        let 配置路径 = path.join(this.dataPath, 配置项.name);
-        let 配置内容 = 配置项.name.endsWith(".js")
-          ? await 读取js配置(配置路径)
-          : await 读取json配置(配置路径);
-        if (!配置内容 instanceof Array) {
-          console.warn(配置项.name + "没有导出数组");
-        } else if (配置内容.length < 6) {
-          配置项.name + "没有配置全部标题序号";
+      try {
+        if (!(配置项.isDir || 配置项.name == "lastValues.json")) {
+          let 配置路径 = path.join(this.dataPath, 配置项.name);
+          let 配置内容 = 配置项.name.endsWith(".js")
+            ? await 读取js配置(配置路径)
+            : await 读取json配置(配置路径);
+          if (!配置内容 instanceof Array) {
+            console.warn(配置项.name + "没有导出数组");
+          } else if (配置内容.length < 6) {
+            配置项.name + "没有配置全部标题序号";
+          }
+          this.设置字典[配置项.name.split(".")[0]] = 配置内容;
+          if (
+            this.设置字典.当前全局配置 &&
+            this.设置字典.当前全局配置.name == 配置项.name.split(".")[0]
+          ) {
+            this.设置字典.当前全局配置.content = 配置内容;
+          }
         }
-        this.设置字典[配置项.name.split(".")[0]] = 配置内容;
-        if (
-          this.设置字典.当前全局配置 &&
-          this.设置字典.当前全局配置.name == 配置项.name.split(".")[0]
-        ) {
-          this.设置字典.当前全局配置.content = 配置内容;
-        }
+      } catch (e) {
+        console.error(`配置文件${配置项.name}加载错误`, e);
       }
-    }catch(e){
-      console.error(`配置文件${配置项.name}加载错误`,e)
-    }
     }
   }
   async ws监听器(detail) {
@@ -524,11 +520,11 @@ async function 生成文档内标题序号(文档id, 序号设置字典, 写入�
             return num;
           };
 
-          obj.num = num
-            obj.ch = 数字转中文(num);
+          obj.num = num;
+          obj.ch = 数字转中文(num);
           obj.roman = numToRoman(num);
           obj.en = numToEnglish(num);
-            obj.CH = 数字转中文(num, true);
+          obj.CH = 数字转中文(num, true);
           obj.abc = 数字转字母(num, false);
           obj.ABC = 数字转字母(num, true);
           obj.enth = numToEnglish(num, false);
@@ -536,7 +532,42 @@ async function 生成文档内标题序号(文档id, 序号设置字典, 写入�
           obj.toString = () => {
             return Obj.num;
           };
-
+          document.querySelectorAll("script").forEach((scriptEl) => {
+            try {
+              let indexFormatters;
+              if (
+                scriptEl.indexFormatters &&
+                scriptEl.indexFormatters instanceof Array
+              ) {
+                indexFormatters = scriptEl.indexFormatters;
+              }
+              if (
+                scriptEl.序号格式化函数组 &&
+                scriptEl.序号格式化函数组 instanceof Array
+              ) {
+                indexFormatters = scriptEl.序号格式化函数组;
+              }
+              if(!indexFormatters){
+                return
+              }
+              indexFormatters.forEach((fn) => {
+                if (
+                  fn.formatter instanceof Function &&
+                  fn.name 
+                ) {
+                  obj[fn.name] = fn.formatter(num,obj,标题元素.dataset.nodeId);
+                }
+                if (
+                  fn.格式化函数 instanceof Function &&
+                  fn.名称 
+                ) {
+                  obj[fn.name] = fn.格式化函数(num,obj,标题元素.dataset.nodeId);
+                }
+              });
+            } catch (e) {
+              console.warn("标题序号定义错误", scriptEl, e);
+            }
+          });
           return obj;
         }
 
