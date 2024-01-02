@@ -13,6 +13,8 @@
   "使用序号类型":"use   ",
   "选择序号类型":"select index scheme",
   "设置序号生成方式":"index generation",
-
+  "开始":"start ",
+  "结束":"stop ",
+  "自动刷新标题":"index auto refresh",
   "生成可能需要很长时间,是否确认继续?":"Generating may take a long time. Are you sure you want to proceed?"
 }

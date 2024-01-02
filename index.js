@@ -72,6 +72,13 @@ class headingIndex extends Plugin {
         label: this.i18n.选择序号类型,
         submenu: _submenu,
       });
+      menu.addItem({
+        icon: "iconRefresh",
+        label:(this.自动刷新标题?"结束":"开始")+this.i18n.自动刷新标题,
+        click:()=>{
+          this.自动刷新标题=!this.自动刷新标题
+        }
+      })
     });
   }
   添加页面() {
@@ -115,7 +122,6 @@ class headingIndex extends Plugin {
     <button  class="b3-button b3-button--outline fn__size200 fn__flex-center" >
           确定
     </button>
-
     </div>
 </label>
           `
@@ -195,7 +201,8 @@ class headingIndex extends Plugin {
     document.head.appendChild(this.样式元素);
     console.log(this.设置字典);
     生成标题序号(this.设置字典);
-    this.eventBus.on("ws-main", this.ws监听器);
+      this.eventBus.on("ws-main", this.ws监听器);
+    
   }
   生成顶栏() {
     this.顶栏按钮 = this.addTopBar({
@@ -275,6 +282,13 @@ class headingIndex extends Plugin {
         });
       },
     });
+    menu.addItem({
+      icon: "iconRefresh",
+      label:(this.自动刷新标题?"结束":"开始")+this.i18n.自动刷新标题,
+      click:()=>{
+        this.自动刷新标题=!this.自动刷新标题
+      }
+    })
     menu.open(this.顶栏按钮.getBoundingClientRect());
   }
   添加配置文件选择菜单项(menu, name) {
@@ -384,8 +398,15 @@ class headingIndex extends Plugin {
       }
     }
   }
-  async ws监听器(detail) {
-    await 生成标题序号(that.设置字典);
+  debounceTimer=null
+  async  ws监听器(detail) {
+    if(this.自动刷新标题){
+      this.debounceTimer?clearTimeout(this.debounceTimer):null;
+      this.debounceTimer = setTimeout(async () => {
+        await 生成标题序号(that.设置字典);
+      }, 500); // 300ms为防抖时间，可以根据实际情况调整
+  
+    }
   }
 }
 module.exports = headingIndex;
@@ -426,7 +447,6 @@ async function 生成标题序号(序号设置字典, 文档id) {
         已提示块[文档id] = true;
         return;
       }
-
       await 生成文档内标题序号(文档id, 序号设置字典);
     } catch (e) {
       console.warn(e);
