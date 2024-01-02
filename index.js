@@ -764,6 +764,31 @@ function 数字转中文(digit, 大写) {
 
 //转换为罗马数字
 function numToRoman(num) {
+  const romanNumMap = [
+    ["I", "IV", "V", "IX"],
+    ["X", "XL", "L", "XC"],
+    ["C", "CD", "D", "CM"],
+    ["M"]
+  ];
+
+  let romanNum = "";
+  let digits = num.toString().split('').reverse();
+  for (let i = 0; i < digits.length; i++) {
+    let digit = parseInt(digits[i]);
+    if (digit <= 3) {
+      romanNum = romanNumMap[i][0].repeat(digit) + romanNum;
+    } else if (digit === 4) {
+      romanNum = romanNumMap[i][1] + romanNum;
+    } else if (digit <= 8) {
+      romanNum = romanNumMap[i][2] + romanNumMap[i][0].repeat(digit - 5) + romanNum;
+    } else if (digit === 9) {
+      romanNum = romanNumMap[i][3] + romanNum;
+    }
+  }
+
+  return romanNum;
+}
+/*function numToRoman(num) {
   const romanNumMap = {
     0: "",
     1: "I",
@@ -805,7 +830,7 @@ function numToRoman(num) {
   }
 
   return romanNum;
-}
+}*/
 const englishNumMap = {
   0: "zero",
   1: "one",
