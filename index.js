@@ -20,6 +20,8 @@ class headingIndex extends Plugin {
     this.增加编辑器生成菜单();
     this.添加页面();
     this.初始化();
+    this.isRefreshing = false; // 添加一个锁变量
+
   }
   增加编辑器生成菜单() {
     this.eventBus.on("click-editortitleicon", (e) => {
@@ -74,9 +76,9 @@ class headingIndex extends Plugin {
       });
       menu.addItem({
         icon: "iconRefresh",
-        label:(this.自动刷新标题?"结束":"开始")+this.i18n.自动刷新标题,
-        click:()=>{
-          this.自动刷新标题=!this.自动刷新标题
+        label: (this.自动刷新标题 ? "结束" : "开始") + this.i18n.自动刷新标题,
+        click: () => {
+          this.自动刷新标题 = !this.自动刷新标题
         }
       })
     });
@@ -93,9 +95,8 @@ class headingIndex extends Plugin {
             `<label class="fn__flex b3-label">
               <div class="fn__flex-1">
                   h${i + 1}
-                  <div class="b3-label__text">${
-                    plugin.i18n[数字转中文(i + 1) + "级标题编号样式"]
-                  }</div>
+                  <div class="b3-label__text">${plugin.i18n[数字转中文(i + 1) + "级标题编号样式"]
+            }</div>
               </div>
               <span class="fn__space"></span>
               <input class="b3-text-field fn__flex-center" data-level="${i}" >
@@ -199,10 +200,9 @@ class headingIndex extends Plugin {
     iframe.contentDocument.head.appendChild(scriptEl);
     template = iframe.contentWindow.template;
     document.head.appendChild(this.样式元素);
-    console.log(this.设置字典);
     生成标题序号(this.设置字典);
-      this.eventBus.on("ws-main", this.ws监听器);
-    
+    this.eventBus.on("ws-main", this.ws监听器);
+
   }
   生成顶栏() {
     this.顶栏按钮 = this.addTopBar({
@@ -243,7 +243,7 @@ class headingIndex extends Plugin {
     });
   }
   创建菜单() {
-    const menu = new clientApi.Menu("topBarSample", () => {});
+    const menu = new clientApi.Menu("topBarSample", () => { });
     let 配置文件名数组 = Object.getOwnPropertyNames(this.设置字典);
     for (let i = 0, len = 配置文件名数组.length; i < len; i++) {
       let name = 配置文件名数组[i];
@@ -284,9 +284,9 @@ class headingIndex extends Plugin {
     });
     menu.addItem({
       icon: "iconRefresh",
-      label:(this.自动刷新标题?"结束":"开始")+this.i18n.自动刷新标题,
-      click:()=>{
-        this.自动刷新标题=!this.自动刷新标题
+      label: (this.自动刷新标题 ? "结束" : "开始") + this.i18n.自动刷新标题,
+      click: () => {
+        this.自动刷新标题 = !this.自动刷新标题
       }
     })
     menu.open(this.顶栏按钮.getBoundingClientRect());
@@ -336,7 +336,6 @@ class headingIndex extends Plugin {
         fn: this.customTab,
       },
     });
-    console.log(tab);
   }
   async 覆盖默认设置() {
     let jsContent = await (await fetch(this.selfURL + "/实例设置1.js")).text();
@@ -398,14 +397,27 @@ class headingIndex extends Plugin {
       }
     }
   }
-  debounceTimer=null
-  async  ws监听器(detail) {
-    if(this.自动刷新标题){
-      this.debounceTimer?clearTimeout(this.debounceTimer):null;
-      this.debounceTimer = setTimeout(async () => {
-        await 生成标题序号(that.设置字典);
-      }, 500); // 300ms为防抖时间，可以根据实际情况调整
-  
+  debounceTimer = null
+  ws监听器 = async (detail) => {
+    if (this.自动刷新标题 && !this.isRefreshing) {
+      // 取消之前的闲时回调(如果存在)
+      if (this.idleCallbackId) {
+        cancelIdleCallback(this.idleCallbackId);
+      }
+      
+      // 设置新的闲时回调
+      this.idleCallbackId = requestIdleCallback(async (deadline) => {
+        if (deadline.timeRemaining() > 0 || deadline.didTimeout) {
+          if (!this.isRefreshing) {
+            this.isRefreshing = true; // 设置锁
+            try {
+              await 生成标题序号(that.设置字典);
+            } finally {
+              this.isRefreshing = false; // 释放锁
+            }
+          }
+        }
+      }, { timeout: 1000 }); // 设置1秒的超时,确保任务最终会执行
     }
   }
 }
@@ -426,6 +438,7 @@ async function 读取json配置(配置路径) {
 }
 let 已提示块 = {};
 async function 生成标题序号(序号设置字典, 文档id) {
+
   if (文档id) {
     await 生成文档内标题序号(文档id, 序号设置字典);
   }
@@ -433,6 +446,7 @@ async function 生成标题序号(序号设置字典, 文档id) {
     ".protyle-breadcrumb__bar span:first-child[data-node-id]"
   );
   文档面包屑数组.forEach(async (文档面包屑元素) => {
+
     let 文档id = 文档面包屑元素.getAttribute("data-node-id");
     try {
       let 预取内容 = await 核心api.getDoc({ id: 文档id, size: 1 });
@@ -472,8 +486,7 @@ async function 生成文档内标题序号(文档id, 序号设置字典, 写入�
     return;
   }
   if (文档信息.ial && 文档信息.ial["custom-index-scheme"]) {
-    当前序号设置 =
-      序号设置字典[文档信息.ial["custom-index-scheme"]] || 当前序号设置;
+    当前序号设置 = 序号设置字典[文档信息.ial["custom-index-scheme"]] || 当前序号设置;
   }
   if (!当前序号设置) {
     return;
@@ -567,21 +580,21 @@ async function 生成文档内标题序号(文档id, 序号设置字典, 写入�
               ) {
                 indexFormatters = scriptEl.序号格式化函数组;
               }
-              if(!indexFormatters){
+              if (!indexFormatters) {
                 return
               }
               indexFormatters.forEach((fn) => {
                 if (
                   fn.formatter instanceof Function &&
-                  fn.name 
+                  fn.name
                 ) {
-                  obj[fn.name] = fn.formatter(num,obj,标题元素.dataset.nodeId);
+                  obj[fn.name] = fn.formatter(num, obj, 标题元素.dataset.nodeId);
                 }
                 if (
                   fn.格式化函数 instanceof Function &&
-                  fn.名称 
+                  fn.名称
                 ) {
-                  obj[fn.name] = fn.格式化函数(num,obj,标题元素.dataset.nodeId);
+                  obj[fn.name] = fn.格式化函数(num, obj, 标题元素.dataset.nodeId);
                 }
               });
             } catch (e) {
@@ -808,49 +821,6 @@ function numToRoman(num) {
 
   return romanNum;
 }
-/*function numToRoman(num) {
-  const romanNumMap = {
-    0: "",
-    1: "I",
-    2: "II",
-    3: "III",
-    4: "IV",
-    5: "V",
-    6: "VI",
-    7: "VII",
-    8: "VIII",
-    9: "IX",
-  };
-  // 拆分数字字符串
-  let numStr = num.toString().split("");
-
-  let romanNum = "";
-  for (let i = 0; i < numStr.length; i++) {
-    let digit = numStr[i];
-    let nextDigit = numStr[i + 1];
-
-    // 特殊情况4和9处理
-    if (+digit === 4 && +nextDigit === 1) {
-      romanNum += "IV";
-      i++;
-    } else if (+digit === 9 && +nextDigit === 1) {
-      romanNum += "IX";
-      i++;
-    } else {
-      // 如果大于5,拆分处理
-      if (+digit > 5) {
-        romanNum += romanNumMap[5];
-        for (let j = 1; j < +digit - 5; j++) {
-          romanNum += romanNumMap[1];
-        }
-      } else {
-        romanNum += romanNumMap[+digit];
-      }
-    }
-  }
-
-  return romanNum;
-}*/
 const englishNumMap = {
   0: "zero",
   1: "one",
